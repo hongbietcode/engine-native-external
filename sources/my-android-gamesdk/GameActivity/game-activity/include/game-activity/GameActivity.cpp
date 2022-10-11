@@ -1199,13 +1199,12 @@ static const JNINativeMethod g_methods[] = {
      (void *)setInputConnection_native},
 };
 
-static const char *const kGameActivityPathName =
-    "com/google/androidgamesdk/GameActivity";
+static const char *const kGameActivityPathName = "com/momonativegame/MainActivity";
+//static const char *const kGameActivityPathName = "com/androidgamesdk/MyGameActivity";
 
 static const char *const kInsetsPathName = "androidx/core/graphics/Insets";
 
-static const char *const kWindowInsetsCompatTypePathName =
-    "androidx/core/view/WindowInsetsCompat$Type";
+static const char *const kWindowInsetsCompatTypePathName = "androidx/core/view/WindowInsetsCompat$Type";
 
 #define FIND_CLASS(var, className)   \
     var = env->FindClass(className); \
@@ -1303,5 +1302,30 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_l
     jlong nativeCode = loadNativeCode_native(
         env, javaGameActivity, path, funcName, internalDataDir, obbDir,
         externalDataDir, jAssetMgr, savedState);
+    return nativeCode;
+}
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
+        JNIEnv *env, jobject javaGameActivity, jstring path, jstring funcName,
+        jstring internalDataDir, jstring obbDir, jstring externalDataDir,
+        jobject jAssetMgr, jbyteArray savedState) {
+    GameActivity_register(env);
+    jlong nativeCode = loadNativeCode_native(
+            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            externalDataDir, jAssetMgr, savedState);
+    return nativeCode;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_momonativegame_MainActivity_loadNativeCode(
+        JNIEnv *env, jobject javaGameActivity, jstring path, jstring funcName,
+        jstring internalDataDir, jstring obbDir, jstring externalDataDir,
+        jobject jAssetMgr, jbyteArray savedState) {
+    GameActivity_register(env);
+    jlong nativeCode = loadNativeCode_native(
+            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }

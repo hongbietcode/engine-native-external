@@ -579,6 +579,5 @@ void GameActivity_onCreate(GameActivity* activity, void* savedState,
     activity->callbacks->onWindowInsetsChanged = onWindowInsetsChanged;
     LOGV("Callbacks set: %p", activity->callbacks);
 
-    activity->instance =
-        android_app_create(activity, savedState, savedStateSize);
+    activity->instance = android_app_create(activity, savedState, savedStateSize);
 }
