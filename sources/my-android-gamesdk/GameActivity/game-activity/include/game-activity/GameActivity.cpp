@@ -45,58 +45,61 @@
 namespace {
 
 #if __ANDROID_API__ >= 26
-std::string getSystemPropViaCallback(const char *key,
-                                     const char *default_value = "") {
-    const prop_info *prop = __system_property_find(key);
-    if (prop == nullptr) {
-        return default_value;
-    }
-    std::string return_value;
-    auto thunk = [](void *cookie, const char * /*name*/, const char *value,
-                    uint32_t /*serial*/) {
-        if (value != nullptr) {
-            std::string *r = static_cast<std::string *>(cookie);
-            *r = value;
+    std::string getSystemPropViaCallback(const char *key,
+                                         const char *default_value = "") {
+        const prop_info *prop = __system_property_find(key);
+        if (prop == nullptr) {
+            return default_value;
         }
-    };
-    __system_property_read_callback(prop, thunk, &return_value);
-    return return_value;
-}
-#else
-std::string getSystemPropViaGet(const char *key,
-                                const char *default_value = "") {
-    char buffer[PROP_VALUE_MAX + 1] = "";  // +1 for terminator
-    int bufferLen = __system_property_get(key, buffer);
-    if (bufferLen > 0)
-        return buffer;
-    else
-        return "";
-}
-#endif
-
-std::string GetSystemProp(const char *key, const char *default_value = "") {
-#if __ANDROID_API__ >= 26
-    return getSystemPropViaCallback(key, default_value);
-#else
-    return getSystemPropViaGet(key, default_value);
-#endif
-}
-
-int GetSystemPropAsInt(const char *key, int default_value = 0) {
-    std::string prop = GetSystemProp(key);
-    return prop == "" ? default_value : strtoll(prop.c_str(), nullptr, 10);
-}
-
-struct OwnedGameTextInputState {
-    OwnedGameTextInputState &operator=(const GameTextInputState &rhs) {
-        inner = rhs;
-        owned_string = std::string(rhs.text_UTF8, rhs.text_length);
-        inner.text_UTF8 = owned_string.data();
-        return *this;
+        std::string return_value;
+        auto thunk = [](void *cookie, const char * /*name*/, const char *value,
+                        uint32_t /*serial*/) {
+            if (value != nullptr) {
+                std::string *r = static_cast<std::string *>(cookie);
+                *r = value;
+            }
+        };
+        __system_property_read_callback(prop, thunk, &return_value);
+        return return_value;
     }
-    GameTextInputState inner;
-    std::string owned_string;
-};
+#else
+
+    std::string getSystemPropViaGet(const char *key,
+                                    const char *default_value = "") {
+        char buffer[PROP_VALUE_MAX + 1] = "";  // +1 for terminator
+        int bufferLen = __system_property_get(key, buffer);
+        if (bufferLen > 0)
+            return buffer;
+        else
+            return "";
+    }
+
+#endif
+
+    std::string GetSystemProp(const char *key, const char *default_value = "") {
+#if __ANDROID_API__ >= 26
+        return getSystemPropViaCallback(key, default_value);
+#else
+        return getSystemPropViaGet(key, default_value);
+#endif
+    }
+
+    int GetSystemPropAsInt(const char *key, int default_value = 0) {
+        std::string prop = GetSystemProp(key);
+        return prop == "" ? default_value : strtoll(prop.c_str(), nullptr, 10);
+    }
+
+    struct OwnedGameTextInputState {
+        OwnedGameTextInputState &operator=(const GameTextInputState &rhs) {
+            inner = rhs;
+            owned_string = std::string(rhs.text_UTF8, rhs.text_length);
+            inner.text_UTF8 = owned_string.data();
+            return *this;
+        }
+
+        GameTextInputState inner;
+        std::string owned_string;
+    };
 
 }  // anonymous namespace
 
@@ -255,7 +258,7 @@ static void write_work(int fd, int32_t cmd, int64_t arg1 = 0,
     work.arg2 = arg2;
 
     LOG_TRACE("write_work: cmd=%d", cmd);
-restart:
+    restart:
     int res = write(fd, &work, sizeof(work));
     if (res < 0 && errno == EINTR) {
         goto restart;
@@ -292,7 +295,7 @@ static bool read_work(int fd, ActivityWork *outWork) {
  */
 struct NativeCode : public GameActivity {
     NativeCode(void *_dlhandle, GameActivity_createFunc *_createFunc) {
-        memset((GameActivity *)this, 0, sizeof(GameActivity));
+        memset((GameActivity *) this, 0, sizeof(GameActivity));
         memset(&callbacks, 0, sizeof(callbacks));
         memset(&insetsState, 0, sizeof(insetsState));
         dlhandle = _dlhandle;
@@ -392,7 +395,7 @@ extern "C" void GameActivity_showSoftInput(GameActivity *activity,
 }
 
 extern "C" void GameActivity_setTextInputState(
-    GameActivity *activity, const GameTextInputState *state) {
+        GameActivity *activity, const GameTextInputState *state) {
     NativeCode *code = static_cast<NativeCode *>(activity);
     std::lock_guard<std::mutex> lock(code->gameTextInputStateMutex);
     code->gameTextInputState = *state;
@@ -400,8 +403,8 @@ extern "C" void GameActivity_setTextInputState(
 }
 
 extern "C" void GameActivity_getTextInputState(
-    GameActivity *activity, GameTextInputGetStateCallback callback,
-    void *context) {
+        GameActivity *activity, GameTextInputGetStateCallback callback,
+        void *context) {
     NativeCode *code = static_cast<NativeCode *>(activity);
     return GameTextInput_getState(code->gameTextInput, callback, context);
 }
@@ -421,7 +424,7 @@ extern "C" void GameActivity_getWindowInsets(GameActivity *activity,
 }
 
 extern "C" GameTextInput *GameActivity_getTextInput(
-    const GameActivity *activity) {
+        const GameActivity *activity) {
     const NativeCode *code = static_cast<const NativeCode *>(activity);
     return code->gameTextInput;
 }
@@ -442,7 +445,7 @@ static void checkAndClearException(JNIEnv *env, const char *methodName) {
  */
 static int mainWorkCallback(int fd, int events, void *data) {
     ALOGD("************** mainWorkCallback *********");
-    NativeCode *code = (NativeCode *)data;
+    NativeCode *code = (NativeCode *) data;
     if ((events & POLLIN) == 0) {
         return 1;
     }
@@ -457,25 +460,30 @@ static int mainWorkCallback(int fd, int events, void *data) {
             code->env->CallVoidMethod(code->javaGameActivity,
                                       gGameActivityClassInfo.finish);
             checkAndClearException(code->env, "finish");
-        } break;
+        }
+            break;
         case CMD_SET_WINDOW_FLAGS: {
             code->env->CallVoidMethod(code->javaGameActivity,
                                       gGameActivityClassInfo.setWindowFlags,
                                       work.arg1, work.arg2);
             checkAndClearException(code->env, "setWindowFlags");
-        } break;
+        }
+            break;
         case CMD_SHOW_SOFT_INPUT: {
             GameTextInput_showIme(code->gameTextInput, work.arg1);
-        } break;
+        }
+            break;
         case CMD_SET_SOFT_INPUT_STATE: {
             std::lock_guard<std::mutex> lock(code->gameTextInputStateMutex);
             GameTextInput_setState(code->gameTextInput,
                                    &code->gameTextInputState.inner);
             checkAndClearException(code->env, "setTextInputState");
-        } break;
+        }
+            break;
         case CMD_HIDE_SOFT_INPUT: {
             GameTextInput_hideIme(code->gameTextInput, work.arg1);
-        } break;
+        }
+            break;
         default:
             ALOGW("Unknown work command: %d", work.cmd);
             break;
@@ -510,7 +518,7 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
 
     const char *funcStr = env->GetStringUTFChars(funcName, NULL);
     code = new NativeCode(handle,
-                          (GameActivity_createFunc *)dlsym(handle, funcStr));
+                          (GameActivity_createFunc *) dlsym(handle, funcStr));
     env->ReleaseStringUTFChars(funcName, funcStr);
 
     if (code->createActivityFunc == nullptr) {
@@ -563,13 +571,13 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
     code->javaGameActivity = env->NewGlobalRef(javaGameActivity);
 
     const char *dirStr =
-        internalDataDir ? env->GetStringUTFChars(internalDataDir, NULL) : "";
+            internalDataDir ? env->GetStringUTFChars(internalDataDir, NULL) : "";
     code->internalDataPathObj = dirStr;
     code->internalDataPath = code->internalDataPathObj.c_str();
     if (internalDataDir) env->ReleaseStringUTFChars(internalDataDir, dirStr);
 
     dirStr =
-        externalDataDir ? env->GetStringUTFChars(externalDataDir, NULL) : "";
+            externalDataDir ? env->GetStringUTFChars(externalDataDir, NULL) : "";
     code->externalDataPathObj = dirStr;
     code->externalDataPath = code->externalDataPathObj.c_str();
     if (externalDataDir) env->ReleaseStringUTFChars(externalDataDir, dirStr);
@@ -593,7 +601,7 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
     code->gameTextInput = GameTextInput_init(env, 0);
     GameTextInput_setEventCallback(code->gameTextInput,
                                    reinterpret_cast<GameTextInputEventCallback>(
-                                       code->callbacks.onTextInputEvent),
+                                           code->callbacks.onTextInputEvent),
                                    code);
 
     if (rawSavedState != NULL) {
@@ -613,7 +621,7 @@ static void unloadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
                                     jlong handle) {
     LOG_TRACE("unloadNativeCode_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         delete code;
     }
 }
@@ -622,7 +630,7 @@ static void onStart_native(JNIEnv *env, jobject javaGameActivity,
                            jlong handle) {
     ALOGV("onStart_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onStart != NULL) {
             code->callbacks.onStart(code);
         }
@@ -633,7 +641,7 @@ static void onResume_native(JNIEnv *env, jobject javaGameActivity,
                             jlong handle) {
     LOG_TRACE("onResume_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onResume != NULL) {
             code->callbacks.onResume(code);
         }
@@ -651,24 +659,24 @@ static jbyteArray onSaveInstanceState_native(JNIEnv *env,
     LOG_TRACE("onSaveInstanceState_native");
 
     SaveInstanceLocals locals{
-        env, NULL};  // Passed through the user's state prep function.
+            env, NULL};  // Passed through the user's state prep function.
 
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onSaveInstanceState != NULL) {
             code->callbacks.onSaveInstanceState(
-                code,
-                [](const char *bytes, int len, void *context) {
-                    auto locals = static_cast<SaveInstanceLocals *>(context);
-                    if (len > 0) {
-                        locals->array = locals->env->NewByteArray(len);
-                        if (locals->array != NULL) {
-                            locals->env->SetByteArrayRegion(
-                                locals->array, 0, len, (const jbyte *)bytes);
+                    code,
+                    [](const char *bytes, int len, void *context) {
+                        auto locals = static_cast<SaveInstanceLocals *>(context);
+                        if (len > 0) {
+                            locals->array = locals->env->NewByteArray(len);
+                            if (locals->array != NULL) {
+                                locals->env->SetByteArrayRegion(
+                                        locals->array, 0, len, (const jbyte *) bytes);
+                            }
                         }
-                    }
-                },
-                &locals);
+                    },
+                    &locals);
         }
     }
     return locals.array;
@@ -678,7 +686,7 @@ static void onPause_native(JNIEnv *env, jobject javaGameActivity,
                            jlong handle) {
     LOG_TRACE("onPause_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onPause != NULL) {
             code->callbacks.onPause(code);
         }
@@ -688,7 +696,7 @@ static void onPause_native(JNIEnv *env, jobject javaGameActivity,
 static void onStop_native(JNIEnv *env, jobject javaGameActivity, jlong handle) {
     LOG_TRACE("onStop_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onStop != NULL) {
             code->callbacks.onStop(code);
         }
@@ -699,7 +707,7 @@ static void onConfigurationChanged_native(JNIEnv *env, jobject javaGameActivity,
                                           jlong handle) {
     LOG_TRACE("onConfigurationChanged_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onConfigurationChanged != NULL) {
             code->callbacks.onConfigurationChanged(code);
         }
@@ -710,7 +718,7 @@ static void onTrimMemory_native(JNIEnv *env, jobject javaGameActivity,
                                 jlong handle, jint level) {
     LOG_TRACE("onTrimMemory_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onTrimMemory != NULL) {
             code->callbacks.onTrimMemory(code, level);
         }
@@ -721,7 +729,7 @@ static void onWindowFocusChanged_native(JNIEnv *env, jobject javaGameActivity,
                                         jlong handle, jboolean focused) {
     LOG_TRACE("onWindowFocusChanged_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->callbacks.onWindowFocusChanged != NULL) {
             code->callbacks.onWindowFocusChanged(code, focused ? 1 : 0);
         }
@@ -733,7 +741,7 @@ static void onSurfaceCreated_native(JNIEnv *env, jobject javaGameActivity,
     ALOGV("onSurfaceCreated_native");
     LOG_TRACE("onSurfaceCreated_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         code->setSurface(surface);
 
         if (code->nativeWindow != NULL &&
@@ -761,7 +769,7 @@ static void onSurfaceChanged_native(JNIEnv *env, jobject javaGameActivity,
                                     jint width, jint height) {
     LOG_TRACE("onSurfaceChanged_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         ANativeWindow *oldNativeWindow = code->nativeWindow;
         // Fix for window being destroyed behind the scenes on older Android
         // versions.
@@ -798,7 +806,7 @@ static void onSurfaceRedrawNeeded_native(JNIEnv *env, jobject javaGameActivity,
                                          jlong handle) {
     LOG_TRACE("onSurfaceRedrawNeeded_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->nativeWindow != NULL &&
             code->callbacks.onNativeWindowRedrawNeeded != NULL) {
             code->callbacks.onNativeWindowRedrawNeeded(code,
@@ -811,7 +819,7 @@ static void onSurfaceDestroyed_native(JNIEnv *env, jobject javaGameActivity,
                                       jlong handle) {
     LOG_TRACE("onSurfaceDestroyed_native");
     if (handle != 0) {
-        NativeCode *code = (NativeCode *)handle;
+        NativeCode *code = (NativeCode *) handle;
         if (code->nativeWindow != NULL &&
             code->callbacks.onNativeWindowDestroyed != NULL) {
             code->callbacks.onNativeWindowDestroyed(code, code->nativeWindow);
@@ -821,11 +829,11 @@ static void onSurfaceDestroyed_native(JNIEnv *env, jobject javaGameActivity,
 }
 
 static bool enabledAxes[GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT] = {
-    /* AMOTION_EVENT_AXIS_X */ true,
-    /* AMOTION_EVENT_AXIS_Y */ true,
-    // Disable all other axes by default (they can be enabled using
-    // `GameActivityPointerAxes_enableAxis`).
-    false};
+        /* AMOTION_EVENT_AXIS_X */ true,
+        /* AMOTION_EVENT_AXIS_Y */ true,
+        // Disable all other axes by default (they can be enabled using
+        // `GameActivityPointerAxes_enableAxis`).
+                                   false};
 
 extern "C" void GameActivityPointerAxes_enableAxis(int32_t axis) {
     if (axis < 0 || axis >= GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT) {
@@ -880,128 +888,128 @@ static struct {
 } gMotionEventClassInfo;
 
 extern "C" void GameActivityMotionEvent_fromJava(
-    JNIEnv *env, jobject motionEvent, GameActivityMotionEvent *out_event) {
+        JNIEnv *env, jobject motionEvent, GameActivityMotionEvent *out_event) {
     static bool gMotionEventClassInfoInitialized = false;
     if (!gMotionEventClassInfoInitialized) {
         int sdkVersion = GetSystemPropAsInt("ro.build.version.sdk");
         gMotionEventClassInfo = {0};
         jclass motionEventClass = env->FindClass("android/view/MotionEvent");
         gMotionEventClassInfo.getDeviceId =
-            env->GetMethodID(motionEventClass, "getDeviceId", "()I");
+                env->GetMethodID(motionEventClass, "getDeviceId", "()I");
         gMotionEventClassInfo.getSource =
-            env->GetMethodID(motionEventClass, "getSource", "()I");
+                env->GetMethodID(motionEventClass, "getSource", "()I");
         gMotionEventClassInfo.getAction =
-            env->GetMethodID(motionEventClass, "getAction", "()I");
+                env->GetMethodID(motionEventClass, "getAction", "()I");
         gMotionEventClassInfo.getEventTime =
-            env->GetMethodID(motionEventClass, "getEventTime", "()J");
+                env->GetMethodID(motionEventClass, "getEventTime", "()J");
         gMotionEventClassInfo.getDownTime =
-            env->GetMethodID(motionEventClass, "getDownTime", "()J");
+                env->GetMethodID(motionEventClass, "getDownTime", "()J");
         gMotionEventClassInfo.getFlags =
-            env->GetMethodID(motionEventClass, "getFlags", "()I");
+                env->GetMethodID(motionEventClass, "getFlags", "()I");
         gMotionEventClassInfo.getMetaState =
-            env->GetMethodID(motionEventClass, "getMetaState", "()I");
+                env->GetMethodID(motionEventClass, "getMetaState", "()I");
         if (sdkVersion >= 23) {
             gMotionEventClassInfo.getActionButton =
-                env->GetMethodID(motionEventClass, "getActionButton", "()I");
+                    env->GetMethodID(motionEventClass, "getActionButton", "()I");
         }
         if (sdkVersion >= 14) {
             gMotionEventClassInfo.getButtonState =
-                env->GetMethodID(motionEventClass, "getButtonState", "()I");
+                    env->GetMethodID(motionEventClass, "getButtonState", "()I");
         }
         if (sdkVersion >= 29) {
             gMotionEventClassInfo.getClassification =
-                env->GetMethodID(motionEventClass, "getClassification", "()I");
+                    env->GetMethodID(motionEventClass, "getClassification", "()I");
         }
         gMotionEventClassInfo.getEdgeFlags =
-            env->GetMethodID(motionEventClass, "getEdgeFlags", "()I");
+                env->GetMethodID(motionEventClass, "getEdgeFlags", "()I");
         gMotionEventClassInfo.getPointerCount =
-            env->GetMethodID(motionEventClass, "getPointerCount", "()I");
+                env->GetMethodID(motionEventClass, "getPointerCount", "()I");
         gMotionEventClassInfo.getPointerId =
-            env->GetMethodID(motionEventClass, "getPointerId", "(I)I");
+                env->GetMethodID(motionEventClass, "getPointerId", "(I)I");
         if (sdkVersion >= 29) {
             gMotionEventClassInfo.getRawX =
-                env->GetMethodID(motionEventClass, "getRawX", "(I)F");
+                    env->GetMethodID(motionEventClass, "getRawX", "(I)F");
             gMotionEventClassInfo.getRawY =
-                env->GetMethodID(motionEventClass, "getRawY", "(I)F");
+                    env->GetMethodID(motionEventClass, "getRawY", "(I)F");
         }
         gMotionEventClassInfo.getXPrecision =
-            env->GetMethodID(motionEventClass, "getXPrecision", "()F");
+                env->GetMethodID(motionEventClass, "getXPrecision", "()F");
         gMotionEventClassInfo.getYPrecision =
-            env->GetMethodID(motionEventClass, "getYPrecision", "()F");
+                env->GetMethodID(motionEventClass, "getYPrecision", "()F");
         gMotionEventClassInfo.getAxisValue =
-            env->GetMethodID(motionEventClass, "getAxisValue", "(II)F");
+                env->GetMethodID(motionEventClass, "getAxisValue", "(II)F");
 
         gMotionEventClassInfoInitialized = true;
     }
 
     int pointerCount =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getPointerCount);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getPointerCount);
     pointerCount =
-        std::min(pointerCount, GAMEACTIVITY_MAX_NUM_POINTERS_IN_MOTION_EVENT);
+            std::min(pointerCount, GAMEACTIVITY_MAX_NUM_POINTERS_IN_MOTION_EVENT);
     out_event->pointerCount = pointerCount;
     for (int i = 0; i < pointerCount; ++i) {
         out_event->pointers[i] = {
-            /*id=*/env->CallIntMethod(motionEvent,
-                                      gMotionEventClassInfo.getPointerId, i),
-            /*axisValues=*/{0},
-            /*rawX=*/gMotionEventClassInfo.getRawX
-                ? env->CallFloatMethod(motionEvent,
-                                       gMotionEventClassInfo.getRawX, i)
-                : 0,
-            /*rawY=*/gMotionEventClassInfo.getRawY
-                ? env->CallFloatMethod(motionEvent,
-                                       gMotionEventClassInfo.getRawY, i)
-                : 0,
+                /*id=*/env->CallIntMethod(motionEvent,
+                                          gMotionEventClassInfo.getPointerId, i),
+                /*axisValues=*/{0},
+                /*rawX=*/gMotionEventClassInfo.getRawX
+                         ? env->CallFloatMethod(motionEvent,
+                                                gMotionEventClassInfo.getRawX, i)
+                         : 0,
+                /*rawY=*/gMotionEventClassInfo.getRawY
+                         ? env->CallFloatMethod(motionEvent,
+                                                gMotionEventClassInfo.getRawY, i)
+                         : 0,
         };
 
         for (int axisIndex = 0;
              axisIndex < GAME_ACTIVITY_POINTER_INFO_AXIS_COUNT; ++axisIndex) {
             if (enabledAxes[axisIndex]) {
                 out_event->pointers[i].axisValues[axisIndex] =
-                    env->CallFloatMethod(motionEvent,
-                                         gMotionEventClassInfo.getAxisValue,
-                                         axisIndex, i);
+                        env->CallFloatMethod(motionEvent,
+                                             gMotionEventClassInfo.getAxisValue,
+                                             axisIndex, i);
             }
         }
     }
 
     out_event->deviceId =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getDeviceId);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getDeviceId);
     out_event->source =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getSource);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getSource);
     out_event->action =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getAction);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getAction);
     out_event->eventTime =
-        env->CallLongMethod(motionEvent, gMotionEventClassInfo.getEventTime) *
-        1000000;
+            env->CallLongMethod(motionEvent, gMotionEventClassInfo.getEventTime) *
+            1000000;
     out_event->downTime =
-        env->CallLongMethod(motionEvent, gMotionEventClassInfo.getDownTime) *
-        1000000;
+            env->CallLongMethod(motionEvent, gMotionEventClassInfo.getDownTime) *
+            1000000;
     out_event->flags =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getFlags);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getFlags);
     out_event->metaState =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getMetaState);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getMetaState);
     out_event->actionButton =
-        gMotionEventClassInfo.getActionButton
+            gMotionEventClassInfo.getActionButton
             ? env->CallIntMethod(motionEvent,
                                  gMotionEventClassInfo.getActionButton)
             : 0;
     out_event->buttonState =
-        gMotionEventClassInfo.getButtonState
+            gMotionEventClassInfo.getButtonState
             ? env->CallIntMethod(motionEvent,
                                  gMotionEventClassInfo.getButtonState)
             : 0;
     out_event->classification =
-        gMotionEventClassInfo.getClassification
+            gMotionEventClassInfo.getClassification
             ? env->CallIntMethod(motionEvent,
                                  gMotionEventClassInfo.getClassification)
             : 0;
     out_event->edgeFlags =
-        env->CallIntMethod(motionEvent, gMotionEventClassInfo.getEdgeFlags);
+            env->CallIntMethod(motionEvent, gMotionEventClassInfo.getEdgeFlags);
     out_event->precisionX =
-        env->CallFloatMethod(motionEvent, gMotionEventClassInfo.getXPrecision);
+            env->CallFloatMethod(motionEvent, gMotionEventClassInfo.getXPrecision);
     out_event->precisionY =
-        env->CallFloatMethod(motionEvent, gMotionEventClassInfo.getYPrecision);
+            env->CallFloatMethod(motionEvent, gMotionEventClassInfo.getYPrecision);
 }
 
 static struct {
@@ -1028,58 +1036,58 @@ extern "C" void GameActivityKeyEvent_fromJava(JNIEnv *env, jobject keyEvent,
         gKeyEventClassInfo = {0};
         jclass keyEventClass = env->FindClass("android/view/KeyEvent");
         gKeyEventClassInfo.getDeviceId =
-            env->GetMethodID(keyEventClass, "getDeviceId", "()I");
+                env->GetMethodID(keyEventClass, "getDeviceId", "()I");
         gKeyEventClassInfo.getSource =
-            env->GetMethodID(keyEventClass, "getSource", "()I");
+                env->GetMethodID(keyEventClass, "getSource", "()I");
         gKeyEventClassInfo.getAction =
-            env->GetMethodID(keyEventClass, "getAction", "()I");
+                env->GetMethodID(keyEventClass, "getAction", "()I");
         gKeyEventClassInfo.getEventTime =
-            env->GetMethodID(keyEventClass, "getEventTime", "()J");
+                env->GetMethodID(keyEventClass, "getEventTime", "()J");
         gKeyEventClassInfo.getDownTime =
-            env->GetMethodID(keyEventClass, "getDownTime", "()J");
+                env->GetMethodID(keyEventClass, "getDownTime", "()J");
         gKeyEventClassInfo.getFlags =
-            env->GetMethodID(keyEventClass, "getFlags", "()I");
+                env->GetMethodID(keyEventClass, "getFlags", "()I");
         gKeyEventClassInfo.getMetaState =
-            env->GetMethodID(keyEventClass, "getMetaState", "()I");
+                env->GetMethodID(keyEventClass, "getMetaState", "()I");
         if (sdkVersion >= 13) {
             gKeyEventClassInfo.getModifiers =
-                env->GetMethodID(keyEventClass, "getModifiers", "()I");
+                    env->GetMethodID(keyEventClass, "getModifiers", "()I");
         }
         gKeyEventClassInfo.getRepeatCount =
-            env->GetMethodID(keyEventClass, "getRepeatCount", "()I");
+                env->GetMethodID(keyEventClass, "getRepeatCount", "()I");
         gKeyEventClassInfo.getKeyCode =
-            env->GetMethodID(keyEventClass, "getKeyCode", "()I");
+                env->GetMethodID(keyEventClass, "getKeyCode", "()I");
 
         gKeyEventClassInfoInitialized = true;
     }
 
     *out_event = {
-        /*deviceId=*/env->CallIntMethod(keyEvent,
-                                        gKeyEventClassInfo.getDeviceId),
-        /*source=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getSource),
-        /*action=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getAction),
-        // TODO: introduce a millisecondsToNanoseconds helper:
-        /*eventTime=*/
-        env->CallLongMethod(keyEvent, gKeyEventClassInfo.getEventTime) *
-            1000000,
-        /*downTime=*/
-        env->CallLongMethod(keyEvent, gKeyEventClassInfo.getDownTime) * 1000000,
-        /*flags=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getFlags),
-        /*metaState=*/
-        env->CallIntMethod(keyEvent, gKeyEventClassInfo.getMetaState),
-        /*modifiers=*/gKeyEventClassInfo.getModifiers
-            ? env->CallIntMethod(keyEvent, gKeyEventClassInfo.getModifiers)
-            : 0,
-        /*repeatCount=*/
-        env->CallIntMethod(keyEvent, gKeyEventClassInfo.getRepeatCount),
-        /*keyCode=*/
-        env->CallIntMethod(keyEvent, gKeyEventClassInfo.getKeyCode)};
+            /*deviceId=*/env->CallIntMethod(keyEvent,
+                                            gKeyEventClassInfo.getDeviceId),
+            /*source=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getSource),
+            /*action=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getAction),
+            // TODO: introduce a millisecondsToNanoseconds helper:
+            /*eventTime=*/
+                         env->CallLongMethod(keyEvent, gKeyEventClassInfo.getEventTime) *
+                         1000000,
+            /*downTime=*/
+                         env->CallLongMethod(keyEvent, gKeyEventClassInfo.getDownTime) * 1000000,
+            /*flags=*/env->CallIntMethod(keyEvent, gKeyEventClassInfo.getFlags),
+            /*metaState=*/
+                         env->CallIntMethod(keyEvent, gKeyEventClassInfo.getMetaState),
+            /*modifiers=*/gKeyEventClassInfo.getModifiers
+                          ? env->CallIntMethod(keyEvent, gKeyEventClassInfo.getModifiers)
+                          : 0,
+            /*repeatCount=*/
+                         env->CallIntMethod(keyEvent, gKeyEventClassInfo.getRepeatCount),
+            /*keyCode=*/
+                         env->CallIntMethod(keyEvent, gKeyEventClassInfo.getKeyCode)};
 }
 
 static bool onTouchEvent_native(JNIEnv *env, jobject javaGameActivity,
                                 jlong handle, jobject motionEvent) {
     if (handle == 0) return false;
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     if (code->callbacks.onTouchEvent == nullptr) return false;
 
     static GameActivityMotionEvent c_event;
@@ -1090,7 +1098,7 @@ static bool onTouchEvent_native(JNIEnv *env, jobject javaGameActivity,
 static bool onKeyUp_native(JNIEnv *env, jobject javaGameActivity, jlong handle,
                            jobject keyEvent) {
     if (handle == 0) return false;
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     if (code->callbacks.onKeyUp == nullptr) return false;
 
     static GameActivityKeyEvent c_event;
@@ -1101,7 +1109,7 @@ static bool onKeyUp_native(JNIEnv *env, jobject javaGameActivity, jlong handle,
 static bool onKeyDown_native(JNIEnv *env, jobject javaGameActivity,
                              jlong handle, jobject keyEvent) {
     if (handle == 0) return false;
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     if (code->callbacks.onKeyDown == nullptr) return false;
 
     static GameActivityKeyEvent c_event;
@@ -1112,29 +1120,29 @@ static bool onKeyDown_native(JNIEnv *env, jobject javaGameActivity,
 static void onTextInput_native(JNIEnv *env, jobject activity, jlong handle,
                                jobject textInputEvent) {
     if (handle == 0) return;
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     GameTextInput_processEvent(code->gameTextInput, textInputEvent);
 }
 
 static void onWindowInsetsChanged_native(JNIEnv *env, jobject activity,
                                          jlong handle) {
     if (handle == 0) return;
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     if (code->callbacks.onWindowInsetsChanged == nullptr) return;
     for (int type = 0; type < GAMECOMMON_INSETS_TYPE_COUNT; ++type) {
         jobject jinsets;
         // Note that waterfall insets are handled differently on the Java side.
         if (type == GAMECOMMON_INSETS_TYPE_WATERFALL) {
             jinsets = env->CallObjectMethod(
-                code->javaGameActivity,
-                gGameActivityClassInfo.getWaterfallInsets);
+                    code->javaGameActivity,
+                    gGameActivityClassInfo.getWaterfallInsets);
         } else {
             jint jtype = env->CallStaticIntMethod(
-                gWindowInsetsCompatTypeClassInfo.clazz,
-                gWindowInsetsCompatTypeClassInfo.methods[type]);
+                    gWindowInsetsCompatTypeClassInfo.clazz,
+                    gWindowInsetsCompatTypeClassInfo.methods[type]);
             jinsets = env->CallObjectMethod(
-                code->javaGameActivity, gGameActivityClassInfo.getWindowInsets,
-                jtype);
+                    code->javaGameActivity, gGameActivityClassInfo.getWindowInsets,
+                    jtype);
         }
         ARect &insets = code->insetsState[type];
         if (jinsets == nullptr) {
@@ -1150,53 +1158,53 @@ static void onWindowInsetsChanged_native(JNIEnv *env, jobject activity,
         }
     }
     GameTextInput_processImeInsets(
-        code->gameTextInput, &code->insetsState[GAMECOMMON_INSETS_TYPE_IME]);
+            code->gameTextInput, &code->insetsState[GAMECOMMON_INSETS_TYPE_IME]);
     code->callbacks.onWindowInsetsChanged(code);
 }
 
 static void setInputConnection_native(JNIEnv *env, jobject activity,
                                       jlong handle, jobject inputConnection) {
-    NativeCode *code = (NativeCode *)handle;
+    NativeCode *code = (NativeCode *) handle;
     GameTextInput_setInputConnection(code->gameTextInput, inputConnection);
 }
 
 static const JNINativeMethod g_methods[] = {
-    {"loadNativeCode",
-     "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
-     "String;Ljava/lang/String;Landroid/content/res/AssetManager;[B)J",
-     (void *)loadNativeCode_native},
-    {"getDlError", "()Ljava/lang/String;", (void *)getDlError_native},
-    {"unloadNativeCode", "(J)V", (void *)unloadNativeCode_native},
-    {"onStartNative", "(J)V", (void *)onStart_native},
-    {"onResumeNative", "(J)V", (void *)onResume_native},
-    {"onSaveInstanceStateNative", "(J)[B", (void *)onSaveInstanceState_native},
-    {"onPauseNative", "(J)V", (void *)onPause_native},
-    {"onStopNative", "(J)V", (void *)onStop_native},
-    {"onConfigurationChangedNative", "(J)V",
-     (void *)onConfigurationChanged_native},
-    {"onTrimMemoryNative", "(JI)V", (void *)onTrimMemory_native},
-    {"onWindowFocusChangedNative", "(JZ)V",
-     (void *)onWindowFocusChanged_native},
-    {"onSurfaceCreatedNative", "(JLandroid/view/Surface;)V",
-     (void *)onSurfaceCreated_native},
-    {"onSurfaceChangedNative", "(JLandroid/view/Surface;III)V",
-     (void *)onSurfaceChanged_native},
-    {"onSurfaceRedrawNeededNative", "(JLandroid/view/Surface;)V",
-     (void *)onSurfaceRedrawNeeded_native},
-    {"onSurfaceDestroyedNative", "(J)V", (void *)onSurfaceDestroyed_native},
-    {"onTouchEventNative", "(JLandroid/view/MotionEvent;)Z",
-     (void *)onTouchEvent_native},
-    {"onKeyDownNative", "(JLandroid/view/KeyEvent;)Z",
-     (void *)onKeyDown_native},
-    {"onKeyUpNative", "(JLandroid/view/KeyEvent;)Z", (void *)onKeyUp_native},
-    {"onTextInputEventNative",
-     "(JLcom/google/androidgamesdk/gametextinput/State;)V",
-     (void *)onTextInput_native},
-    {"onWindowInsetsChangedNative", "(J)V",
-     (void *)onWindowInsetsChanged_native},
-    {"setInputConnectionNative",
-     "(JLcom/google/androidgamesdk/gametextinput/InputConnection;)V",
-     (void *)setInputConnection_native},
+        {"loadNativeCode",
+                                         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
+                                         "String;Ljava/lang/String;Landroid/content/res/AssetManager;[B)J",
+                                                                        (void *) loadNativeCode_native},
+        {"getDlError",                   "()Ljava/lang/String;",        (void *) getDlError_native},
+        {"unloadNativeCode",             "(J)V",                        (void *) unloadNativeCode_native},
+        {"onStartNative",                "(J)V",                        (void *) onStart_native},
+        {"onResumeNative",               "(J)V",                        (void *) onResume_native},
+        {"onSaveInstanceStateNative",    "(J)[B",                       (void *) onSaveInstanceState_native},
+        {"onPauseNative",                "(J)V",                        (void *) onPause_native},
+        {"onStopNative",                 "(J)V",                        (void *) onStop_native},
+        {"onConfigurationChangedNative", "(J)V",
+                                                                        (void *) onConfigurationChanged_native},
+        {"onTrimMemoryNative",           "(JI)V",                       (void *) onTrimMemory_native},
+        {"onWindowFocusChangedNative",   "(JZ)V",
+                                                                        (void *) onWindowFocusChanged_native},
+        {"onSurfaceCreatedNative",       "(JLandroid/view/Surface;)V",
+                                                                        (void *) onSurfaceCreated_native},
+        {"onSurfaceChangedNative",       "(JLandroid/view/Surface;III)V",
+                                                                        (void *) onSurfaceChanged_native},
+        {"onSurfaceRedrawNeededNative",  "(JLandroid/view/Surface;)V",
+                                                                        (void *) onSurfaceRedrawNeeded_native},
+        {"onSurfaceDestroyedNative",     "(J)V",                        (void *) onSurfaceDestroyed_native},
+        {"onTouchEventNative",           "(JLandroid/view/MotionEvent;)Z",
+                                                                        (void *) onTouchEvent_native},
+        {"onKeyDownNative",              "(JLandroid/view/KeyEvent;)Z",
+                                                                        (void *) onKeyDown_native},
+        {"onKeyUpNative",                "(JLandroid/view/KeyEvent;)Z", (void *) onKeyUp_native},
+        {"onTextInputEventNative",
+                                         "(JLcom/google/androidgamesdk/gametextinput/State;)V",
+                                                                        (void *) onTextInput_native},
+        {"onWindowInsetsChangedNative",  "(J)V",
+                                                                        (void *) onWindowInsetsChanged_native},
+        {"setInputConnectionNative",
+                                         "(JLcom/google/androidgamesdk/gametextinput/InputConnection;)V",
+                                                                        (void *) setInputConnection_native},
 };
 
 static const char *const kGameActivityPathName = "com/momonativegame/MainActivity";
@@ -1269,20 +1277,20 @@ extern "C" int GameActivity_register(JNIEnv *env) {
     jclass windowInsetsCompatType_class;
     FIND_CLASS(windowInsetsCompatType_class, kWindowInsetsCompatTypePathName);
     gWindowInsetsCompatTypeClassInfo.clazz =
-        (jclass)env->NewGlobalRef(windowInsetsCompatType_class);
+            (jclass) env->NewGlobalRef(windowInsetsCompatType_class);
     // These names must match, in order, the GameCommonInsetsType enum fields
     // Note that waterfall is handled differently by the insets API, so we
     // exclude it here.
     const char *methodNames[GAMECOMMON_INSETS_TYPE_WATERFALL] = {
-        "captionBar",
-        "displayCutout",
-        "ime",
-        "mandatorySystemGestures",
-        "navigationBars",
-        "statusBars",
-        "systemBars",
-        "systemGestures",
-        "tappableElement"};
+            "captionBar",
+            "displayCutout",
+            "ime",
+            "mandatorySystemGestures",
+            "navigationBars",
+            "statusBars",
+            "systemBars",
+            "systemGestures",
+            "tappableElement"};
     for (int i = 0; i < GAMECOMMON_INSETS_TYPE_WATERFALL; ++i) {
         GET_STATIC_METHOD_ID(gWindowInsetsCompatTypeClassInfo.methods[i],
                              windowInsetsCompatType_class, methodNames[i],
@@ -1295,13 +1303,13 @@ extern "C" int GameActivity_register(JNIEnv *env) {
 // Register this method so that GameActiviy_register does not need to be called
 // manually. note
 extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_loadNativeCode(
-    JNIEnv *env, jobject javaGameActivity, jstring path, jstring funcName,
-    jstring internalDataDir, jstring obbDir, jstring externalDataDir,
-    jobject jAssetMgr, jbyteArray savedState) {
+        JNIEnv *env, jobject javaGameActivity, jstring path, jstring funcName,
+        jstring internalDataDir, jstring obbDir, jstring externalDataDir,
+        jobject jAssetMgr, jbyteArray savedState) {
     GameActivity_register(env);
     jlong nativeCode = loadNativeCode_native(
-        env, javaGameActivity, path, funcName, internalDataDir, obbDir,
-        externalDataDir, jAssetMgr, savedState);
+            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
 extern "C"
