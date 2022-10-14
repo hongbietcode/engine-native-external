@@ -622,6 +622,7 @@ static jstring getDlError_native(JNIEnv *env, jobject javaGameActivity) {
 static void unloadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
                                     jlong handle) {
     LOG_TRACE("unloadNativeCode_native");
+    ALOGV("unloadNativeCode_native");
     if (handle != 0) {
         NativeCode *code = (NativeCode *)handle;
         delete code;
@@ -697,6 +698,7 @@ static void onPause_native(JNIEnv *env, jobject javaGameActivity,
 
 static void onStop_native(JNIEnv *env, jobject javaGameActivity, jlong handle) {
     LOG_TRACE("onStop_native");
+    ALOGV("onStop_native");
     if (handle != 0) {
         NativeCode *code = (NativeCode *)handle;
         if (code->callbacks.onStop != NULL) {
@@ -1247,7 +1249,7 @@ static const JNINativeMethod my_g_methods[] = {
 };
 
 static const char *const kActivityPathName = "com/momonativegame/MainActivity"; // com/androidgamesdk/MyGameActivity
-static const char *const kGameViewPathName = "com/cocos/CocosView";
+static const char *const kGameViewPathName = "com/cocos/CocosViewManager";
 static const char *const kInsetsPathName = "androidx/core/graphics/Insets";
 
 static const char *const kWindowInsetsCompatTypePathName =
@@ -1414,13 +1416,13 @@ Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
 // NOTE: tri.vo
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_cocos_CocosView_loadNativeCode(
+Java_com_cocos_CocosViewManager_loadNativeCode(
         JNIEnv *env, jobject javaGameActivity, jobject activity, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
         jobject jAssetMgr, jbyteArray savedState) {
     GameView_register(env);
     jlong nativeCode = loadNativeCode_native(
-            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            env, activity, path, funcName, internalDataDir, obbDir,
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
