@@ -608,7 +608,7 @@ static jlong myLoadNativeCode_native(JNIEnv *env, jobject javaGameActivity, jobj
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
 jobject jAssetMgr, jbyteArray savedState) {
     jlong nativeCode = loadNativeCode_native(
-            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            env, activity, path, funcName, internalDataDir, obbDir,
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
