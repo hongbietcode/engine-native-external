@@ -603,6 +603,16 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
     return reinterpret_cast<jlong>(code);
 }
 
+// NOTE: tri.vo
+static jlong myLoadNativeCode_native(JNIEnv *env, jobject javaGameActivity, jobject activity, jstring path, jstring funcName,
+        jstring internalDataDir, jstring obbDir, jstring externalDataDir,
+jobject jAssetMgr, jbyteArray savedState) {
+    jlong nativeCode = loadNativeCode_native(
+            env, javaGameActivity, path, funcName, internalDataDir, obbDir,
+            externalDataDir, jAssetMgr, savedState);
+    return nativeCode;
+}
+
 static jstring getDlError_native(JNIEnv *env, jobject javaGameActivity) {
     jstring result = env->NewStringUTF(g_error_msg.c_str());
     g_error_msg.clear();
@@ -1160,8 +1170,7 @@ static void setInputConnection_native(JNIEnv *env, jobject activity,
 }
 
 static const JNINativeMethod g_methods[] = {
-        {"loadNativeCode",
-                                         "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
+        {"loadNativeCode", "(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
                                          "String;Ljava/lang/String;Landroid/content/res/AssetManager;[B)J",
                                                          (void *)loadNativeCode_native},
         {"getDlError", "()Ljava/lang/String;", (void *)getDlError_native},
@@ -1198,9 +1207,47 @@ static const JNINativeMethod g_methods[] = {
                                                          (void *)setInputConnection_native},
 };
 
-static const char *const kGameActivityPathName = "com/momonativegame/MainActivity";
-//static const char *const kGameActivityPathName = "com/androidgamesdk/MyGameActivity";
+// NOTE: tri.vo
+static const JNINativeMethod my_g_methods[] = {
+        {"loadNativeCode", "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
+                                         "String;Ljava/lang/String;Landroid/content/res/AssetManager;[B)J",
+                                                         (void *) myLoadNativeCode_native},
+        {"getDlError", "()Ljava/lang/String;", (void *)getDlError_native},
+        {"unloadNativeCode", "(J)V", (void *)unloadNativeCode_native},
+        {"onStartNative", "(J)V", (void *)onStart_native},
+        {"onResumeNative", "(J)V", (void *)onResume_native},
+        {"onSaveInstanceStateNative", "(J)[B", (void *)onSaveInstanceState_native},
+        {"onPauseNative", "(J)V", (void *)onPause_native},
+        {"onStopNative", "(J)V", (void *)onStop_native},
+        {"onConfigurationChangedNative", "(J)V",
+                                                         (void *)onConfigurationChanged_native},
+        {"onTrimMemoryNative", "(JI)V", (void *)onTrimMemory_native},
+        {"onWindowFocusChangedNative", "(JZ)V",
+                                                         (void *)onWindowFocusChanged_native},
+        {"onSurfaceCreatedNative", "(JLandroid/view/Surface;)V",
+                                                         (void *)onSurfaceCreated_native},
+        {"onSurfaceChangedNative", "(JLandroid/view/Surface;III)V",
+                                                         (void *)onSurfaceChanged_native},
+        {"onSurfaceRedrawNeededNative", "(JLandroid/view/Surface;)V",
+                                                         (void *)onSurfaceRedrawNeeded_native},
+        {"onSurfaceDestroyedNative", "(J)V", (void *)onSurfaceDestroyed_native},
+        {"onTouchEventNative", "(JLandroid/view/MotionEvent;)Z",
+                                                         (void *)onTouchEvent_native},
+        {"onKeyDownNative", "(JLandroid/view/KeyEvent;)Z",
+                                                         (void *)onKeyDown_native},
+        {"onKeyUpNative", "(JLandroid/view/KeyEvent;)Z", (void *)onKeyUp_native},
+        {"onTextInputEventNative",
+                                         "(JLcom/google/androidgamesdk/gametextinput/State;)V",
+                                                         (void *)onTextInput_native},
+        {"onWindowInsetsChangedNative", "(J)V",
+                                                         (void *)onWindowInsetsChanged_native},
+        {"setInputConnectionNative",
+                                         "(JLcom/google/androidgamesdk/gametextinput/InputConnection;)V",
+                                                         (void *)setInputConnection_native},
+};
 
+static const char *const kActivityPathName = "com/momonativegame/MainActivity"; // com/androidgamesdk/MyGameActivity
+static const char *const kGameViewPathName = "com/cocos/CocosView";
 static const char *const kInsetsPathName = "androidx/core/graphics/Insets";
 
 static const char *const kWindowInsetsCompatTypePathName =
@@ -1249,7 +1296,7 @@ static int jniRegisterNativeMethods(JNIEnv *env, const char *className,
 extern "C" int GameActivity_register(JNIEnv *env) {
     ALOGD("GameActivity_register");
     jclass activity_class;
-    FIND_CLASS(activity_class, kGameActivityPathName);
+    FIND_CLASS(activity_class, kActivityPathName);
     GET_METHOD_ID(gGameActivityClassInfo.finish, activity_class, "finish",
                   "()V");
     GET_METHOD_ID(gGameActivityClassInfo.setWindowFlags, activity_class,
@@ -1288,8 +1335,55 @@ extern "C" int GameActivity_register(JNIEnv *env) {
                              windowInsetsCompatType_class, methodNames[i],
                              "()I");
     }
-    return jniRegisterNativeMethods(env, kGameActivityPathName, g_methods,
+    return jniRegisterNativeMethods(env, kActivityPathName, g_methods,
                                     NELEM(g_methods));
+}
+
+// NOTE: tri.vo
+extern "C" int GameView_register(JNIEnv *env) {
+    ALOGD("GameView_register");
+
+    jclass activity_class;
+    FIND_CLASS(activity_class, kActivityPathName);
+    GET_METHOD_ID(gGameActivityClassInfo.finish, activity_class, "finish",
+                  "()V");
+    GET_METHOD_ID(gGameActivityClassInfo.setWindowFlags, activity_class,
+                  "setWindowFlags", "(II)V");
+    GET_METHOD_ID(gGameActivityClassInfo.getWindowInsets, activity_class,
+                  "getWindowInsets", "(I)Landroidx/core/graphics/Insets;");
+    GET_METHOD_ID(gGameActivityClassInfo.getWaterfallInsets, activity_class,
+                  "getWaterfallInsets", "()Landroidx/core/graphics/Insets;");
+    GET_METHOD_ID(gGameActivityClassInfo.setImeEditorInfoFields, activity_class,
+                  "setImeEditorInfoFields", "(III)V");
+
+    jclass insets_class;
+    FIND_CLASS(insets_class, kInsetsPathName);
+    GET_FIELD_ID(gInsetsClassInfo.left, insets_class, "left", "I");
+    GET_FIELD_ID(gInsetsClassInfo.right, insets_class, "right", "I");
+    GET_FIELD_ID(gInsetsClassInfo.top, insets_class, "top", "I");
+    GET_FIELD_ID(gInsetsClassInfo.bottom, insets_class, "bottom", "I");
+    jclass windowInsetsCompatType_class;
+    FIND_CLASS(windowInsetsCompatType_class, kWindowInsetsCompatTypePathName);
+    gWindowInsetsCompatTypeClassInfo.clazz = (jclass)env->NewGlobalRef(windowInsetsCompatType_class);
+    // These names must match, in order, the GameCommonInsetsType enum fields
+    // Note that waterfall is handled differently by the insets API, so we
+    // exclude it here.
+    const char *methodNames[GAMECOMMON_INSETS_TYPE_WATERFALL] = {
+            "captionBar",
+            "displayCutout",
+            "ime",
+            "mandatorySystemGestures",
+            "navigationBars",
+            "statusBars",
+            "systemBars",
+            "systemGestures",
+            "tappableElement"};
+    for (int i = 0; i < GAMECOMMON_INSETS_TYPE_WATERFALL; ++i) {
+        GET_STATIC_METHOD_ID(gWindowInsetsCompatTypeClassInfo.methods[i],
+                             windowInsetsCompatType_class, methodNames[i],
+                             "()I");
+    }
+    return jniRegisterNativeMethods(env, kGameViewPathName, my_g_methods, NELEM(my_g_methods));
 }
 
 // Register this method so that GameActiviy_register does not need to be called
@@ -1317,15 +1411,17 @@ Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
     return nativeCode;
 }
 
+// NOTE: tri.vo
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_momonativegame_MainActivity_loadNativeCode(
-        JNIEnv *env, jobject javaGameActivity, jstring path, jstring funcName,
+Java_com_cocos_CocosView_loadNativeCode(
+        JNIEnv *env, jobject javaGameActivity, jobject activity, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
         jobject jAssetMgr, jbyteArray savedState) {
-    GameActivity_register(env);
+    GameView_register(env);
     jlong nativeCode = loadNativeCode_native(
             env, javaGameActivity, path, funcName, internalDataDir, obbDir,
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
+
