@@ -603,8 +603,9 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
     return reinterpret_cast<jlong>(code);
 }
 
+// ------------------------------------------------------------------------
 // NOTE: tri.vo
-static jlong myLoadNativeCode_native(JNIEnv *env, jobject javaGameActivity, jobject activity, jstring path, jstring funcName,
+static jlong myLoadNativeCode_native(JNIEnv *env, jobject javaGameActivity, jobject activity, jstring activityPathName, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
 jobject jAssetMgr, jbyteArray savedState) {
     jlong nativeCode = loadNativeCode_native(
@@ -612,6 +613,7 @@ jobject jAssetMgr, jbyteArray savedState) {
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
+// ------------------------------------------------------------------------
 
 static jstring getDlError_native(JNIEnv *env, jobject javaGameActivity) {
     jstring result = env->NewStringUTF(g_error_msg.c_str());
@@ -622,7 +624,6 @@ static jstring getDlError_native(JNIEnv *env, jobject javaGameActivity) {
 static void unloadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
                                     jlong handle) {
     LOG_TRACE("unloadNativeCode_native");
-    ALOGV("unloadNativeCode_native");
     if (handle != 0) {
         NativeCode *code = (NativeCode *)handle;
         delete code;
@@ -1211,7 +1212,7 @@ static const JNINativeMethod g_methods[] = {
 
 // NOTE: tri.vo
 static const JNINativeMethod my_g_methods[] = {
-        {"loadNativeCode", "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
+        {"loadNativeCode", "(Landroid/app/Activity;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/"
                                          "String;Ljava/lang/String;Landroid/content/res/AssetManager;[B)J",
                                                          (void *) myLoadNativeCode_native},
         {"getDlError", "()Ljava/lang/String;", (void *)getDlError_native},
@@ -1248,9 +1249,9 @@ static const JNINativeMethod my_g_methods[] = {
                                                          (void *)setInputConnection_native},
 };
 
-static const char *const kActivityPathName = "com/momonativegame/MainActivity"; // com/androidgamesdk/MyGameActivity
-static const char *const kGameViewPathName = "com/cocos/CocosViewManager";
-static const char *const kInsetsPathName = "androidx/core/graphics/Insets";
+static const char *kActivityPathName = "com/androidgamesdk/MyGameActivity";
+static const char *kGameViewPathName = "com/cocos/lib/CocosViewManager";
+static const char *kInsetsPathName = "androidx/core/graphics/Insets";
 
 static const char *const kWindowInsetsCompatTypePathName =
         "androidx/core/view/WindowInsetsCompat$Type";
@@ -1341,6 +1342,7 @@ extern "C" int GameActivity_register(JNIEnv *env) {
                                     NELEM(g_methods));
 }
 
+// ----------------------------------------------------------------------------
 // NOTE: tri.vo
 extern "C" int GameView_register(JNIEnv *env) {
     ALOGD("GameView_register");
@@ -1387,7 +1389,7 @@ extern "C" int GameView_register(JNIEnv *env) {
     }
     return jniRegisterNativeMethods(env, kGameViewPathName, my_g_methods, NELEM(my_g_methods));
 }
-
+// ----------------------------------------------------------------------------
 // Register this method so that GameActiviy_register does not need to be called
 // manually.
 extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_loadNativeCode(
@@ -1400,6 +1402,9 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_l
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
+
+
+// ----------------------------------------------------------------------------
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
@@ -1416,14 +1421,15 @@ Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
 // NOTE: tri.vo
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_cocos_CocosViewManager_loadNativeCode(
-        JNIEnv *env, jobject javaGameActivity, jobject activity, jstring path, jstring funcName,
+Java_com_cocos_lib_CocosViewManager_loadNativeCode(
+        JNIEnv *env, jobject javaGameActivity, jobject activity, jstring activityPathName, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
         jobject jAssetMgr, jbyteArray savedState) {
+    kActivityPathName = env->GetStringUTFChars(activityPathName, nullptr);
     GameView_register(env);
     jlong nativeCode = loadNativeCode_native(
             env, activity, path, funcName, internalDataDir, obbDir,
             externalDataDir, jAssetMgr, savedState);
     return nativeCode;
 }
-
+// ----------------------------------------------------------------------------
