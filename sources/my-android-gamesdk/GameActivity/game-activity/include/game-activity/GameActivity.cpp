@@ -603,17 +603,124 @@ static jlong loadNativeCode_native(JNIEnv *env, jobject javaGameActivity,
     return reinterpret_cast<jlong>(code);
 }
 
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // NOTE: tri.vo
-static jlong myLoadNativeCode_native(JNIEnv *env, jobject javaGameActivity, jobject activity, jstring activityPathName, jstring path, jstring funcName,
-        jstring internalDataDir, jstring obbDir, jstring externalDataDir,
+static jlong myLoadNativeCode_native(JNIEnv *env, jobject /*javaGameActivity*/,
+                                     jobject javaGameActivity, jstring /*activityPathName*/,
+                                     jstring path, jstring funcName,
+                                     jstring internalDataDir, jstring obbDir,
+                                     jstring externalDataDir,
 jobject jAssetMgr, jbyteArray savedState) {
-    jlong nativeCode = loadNativeCode_native(
-            env, activity, path, funcName, internalDataDir, obbDir,
-            externalDataDir, jAssetMgr, savedState);
-    return nativeCode;
+    LOG_TRACE("loadNativeCode_native");
+    const char *pathStr = env->GetStringUTFChars(path, NULL);
+    NativeCode *code = NULL;
+
+    void *handle = dlopen(pathStr, RTLD_LAZY);
+
+    env->ReleaseStringUTFChars(path, pathStr);
+
+    if (handle == nullptr) {
+        g_error_msg = dlerror();
+        ALOGE("GameActivity dlopen(\"%s\") failed: %s", pathStr,
+              g_error_msg.c_str());
+        return 0;
+    }
+
+    const char *funcStr = env->GetStringUTFChars(funcName, NULL);
+    code = new NativeCode(handle,
+                          (GameActivity_createFunc *)dlsym(handle, funcStr));
+    env->ReleaseStringUTFChars(funcName, funcStr);
+
+    if (code->createActivityFunc == nullptr) {
+        g_error_msg = dlerror();
+        ALOGW("GameActivity_onCreate not found: %s", g_error_msg.c_str());
+        delete code;
+        return 0;
+    }
+
+    code->looper = ALooper_forThread();
+    if (code->looper == nullptr) {
+        g_error_msg = "Unable to retrieve native ALooper";
+        ALOGW("%s", g_error_msg.c_str());
+        delete code;
+        return 0;
+    }
+    ALooper_acquire(code->looper);
+
+    int msgpipe[2];
+    if (pipe(msgpipe)) {
+        g_error_msg = "could not create pipe: ";
+        g_error_msg += strerror(errno);
+
+        ALOGW("%s", g_error_msg.c_str());
+        delete code;
+        return 0;
+    }
+    code->mainWorkRead = msgpipe[0];
+    code->mainWorkWrite = msgpipe[1];
+    int result = fcntl(code->mainWorkRead, F_SETFL, O_NONBLOCK);
+    SLOGW_IF(result != 0,
+             "Could not make main work read pipe "
+             "non-blocking: %s",
+             strerror(errno));
+    result = fcntl(code->mainWorkWrite, F_SETFL, O_NONBLOCK);
+    SLOGW_IF(result != 0,
+             "Could not make main work write pipe "
+             "non-blocking: %s",
+             strerror(errno));
+    ALooper_addFd(code->looper, code->mainWorkRead, 0, ALOOPER_EVENT_INPUT,
+                  mainWorkCallback, code);
+
+    code->GameActivity::callbacks = &code->callbacks;
+    if (env->GetJavaVM(&code->vm) < 0) {
+        ALOGW("GameActivity GetJavaVM failed");
+        delete code;
+        return 0;
+    }
+    code->env = env;
+    code->javaGameActivity = env->NewGlobalRef(javaGameActivity);
+
+    const char *dirStr =
+            internalDataDir ? env->GetStringUTFChars(internalDataDir, NULL) : "";
+    code->internalDataPathObj = dirStr;
+    code->internalDataPath = code->internalDataPathObj.c_str();
+    if (internalDataDir) env->ReleaseStringUTFChars(internalDataDir, dirStr);
+
+    dirStr =
+            externalDataDir ? env->GetStringUTFChars(externalDataDir, NULL) : "";
+    code->externalDataPathObj = dirStr;
+    code->externalDataPath = code->externalDataPathObj.c_str();
+    if (externalDataDir) env->ReleaseStringUTFChars(externalDataDir, dirStr);
+
+    code->javaAssetManager = env->NewGlobalRef(jAssetMgr);
+    code->assetManager = AAssetManager_fromJava(env, jAssetMgr);
+
+    dirStr = obbDir ? env->GetStringUTFChars(obbDir, NULL) : "";
+    code->obbPathObj = dirStr;
+    code->obbPath = code->obbPathObj.c_str();
+    if (obbDir) env->ReleaseStringUTFChars(obbDir, dirStr);
+
+    jbyte *rawSavedState = NULL;
+    jsize rawSavedSize = 0;
+    if (savedState != NULL) {
+        rawSavedState = env->GetByteArrayElements(savedState, NULL);
+        rawSavedSize = env->GetArrayLength(savedState);
+    }
+    code->createActivityFunc(code, rawSavedState, rawSavedSize);
+
+    code->gameTextInput = GameTextInput_init(env, 0);
+    GameTextInput_setEventCallback(code->gameTextInput,
+                                   reinterpret_cast<GameTextInputEventCallback>(
+                                           code->callbacks.onTextInputEvent),
+                                   code);
+
+    if (rawSavedState != NULL) {
+        env->ReleaseByteArrayElements(savedState, rawSavedState, 0);
+    }
+
+    return reinterpret_cast<jlong>(code);
 }
-// ------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 
 static jstring getDlError_native(JNIEnv *env, jobject javaGameActivity) {
     jstring result = env->NewStringUTF(g_error_msg.c_str());
@@ -1342,7 +1449,7 @@ extern "C" int GameActivity_register(JNIEnv *env) {
                                     NELEM(g_methods));
 }
 
-// ----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // NOTE: tri.vo
 extern "C" int GameView_register(JNIEnv *env) {
     ALOGD("GameView_register");
@@ -1389,7 +1496,7 @@ extern "C" int GameView_register(JNIEnv *env) {
     }
     return jniRegisterNativeMethods(env, kGameViewPathName, my_g_methods, NELEM(my_g_methods));
 }
-// ----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 // Register this method so that GameActiviy_register does not need to be called
 // manually.
 extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_loadNativeCode(
@@ -1404,7 +1511,7 @@ extern "C" JNIEXPORT jlong JNICALL Java_com_google_androidgamesdk_GameActivity_l
 }
 
 
-// ----------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
