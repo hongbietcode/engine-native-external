@@ -1357,7 +1357,7 @@ static const JNINativeMethod my_g_methods[] = {
 };
 
 static const char *kActivityPathName = "com/androidgamesdk/MyGameActivity";
-static const char *kGameViewPathName = "com/cocos/lib/CocosViewManager";
+static const char *kGameViewPathName = "com/cocos/module/CocosViewManager";
 static const char *kInsetsPathName = "androidx/core/graphics/Insets";
 
 static const char *const kWindowInsetsCompatTypePathName =
@@ -1528,7 +1528,7 @@ Java_com_androidgamesdk_MyGameActivity_loadNativeCode(
 // NOTE: tri.vo
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_cocos_lib_CocosViewManager_loadNativeCode(
+Java_com_cocos_module_CocosViewManager_loadNativeCode(
         JNIEnv *env, jobject javaGameActivity, jobject activity, jstring activityPathName, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
         jobject jAssetMgr, jbyteArray savedState) {
