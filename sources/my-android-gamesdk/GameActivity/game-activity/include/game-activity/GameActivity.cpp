@@ -1356,7 +1356,7 @@ static const JNINativeMethod my_g_methods[] = {
                                                          (void *)setInputConnection_native},
 };
 
-static const char *kActivityPathName = "com/androidgamesdk/MyGameActivity";
+static const char *kActivityPathName = "com/cocos/lib/MomoReactActivity";
 static const char *kGameViewPathName = "com/cocos/lib/CocosViewManager";
 static const char *kInsetsPathName = "androidx/core/graphics/Insets";
 
@@ -1452,7 +1452,7 @@ extern "C" int GameActivity_register(JNIEnv *env) {
 // -------------------------------------------------------------------------------------------------
 // NOTE: tri.vo
 extern "C" int GameView_register(JNIEnv *env) {
-    ALOGD("GameView_register");
+    ALOGD("GameView_register", kGameViewPathName, kActivityPathName);
 
     jclass activity_class;
     FIND_CLASS(activity_class, kActivityPathName);
@@ -1532,7 +1532,11 @@ Java_com_cocos_lib_CocosViewManager_loadNativeCode(
         JNIEnv *env, jobject javaGameActivity, jobject activity, jstring activityPathName, jstring path, jstring funcName,
         jstring internalDataDir, jstring obbDir, jstring externalDataDir,
         jobject jAssetMgr, jbyteArray savedState) {
-    kActivityPathName = env->GetStringUTFChars(activityPathName, nullptr);
+    std::string pathName = env->GetStringUTFChars(activityPathName, nullptr);
+    if (!pathName.empty()) {
+        kActivityPathName = pathName.c_str();
+    }
+
     GameView_register(env);
     jlong nativeCode = loadNativeCode_native(
             env, activity, path, funcName, internalDataDir, obbDir,
